@@ -276,9 +276,9 @@ buffer boundaries with possible narrowing."
                                                  (pos-eol 2))
                                                 " "))
                                           ;; Consume next line as dummy
-                                          (next-line)
+                                          (forward-line)
                                         ;; Create dummy line
-                                        (move-end-of-line 1)
+                                        (end-of-line 1)
                                         (insert (propertize "\n" 'line-height t))
                                         (insert " "))
                                       (setq start (pos-bol)
