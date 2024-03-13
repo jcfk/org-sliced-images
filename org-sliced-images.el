@@ -292,6 +292,7 @@ buffer boundaries with possible narrowing."
                                            (list (list 'slice 0 y 1.0 dy) image))
                                           ovfam))
                                   (setq y (+ y dy))))
+                              (setq end (+ end (* 2 (- (ceiling image-line-h) 1))))
                               (push (make-overlay dummy-zone-start dummy-zone-end) ovfam)
                               (push ovfam org-inline-image-overlay-families))))))))))))))))
 
