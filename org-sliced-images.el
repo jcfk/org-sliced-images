@@ -41,12 +41,25 @@
 ;;
 ;; Dummy lines are added to support slice overlays. Lines matching dummy lines
 ;; coming directly after a link can be overlaid, instead of adding new ones,
-;; depending on the value of global variable `org-sliced-images-consume'. This
-;; prevents a massive buildup of dummy lines over multiple file saves.
+;; depending on the value of `org-sliced-images-consume-dummies'. This prevents
+;; a massive buildup of dummy lines over multiple file saves.
 ;;
 ;;; Code:
 
 (require 'org)
+
+;; Configuration
+
+(defgroup org-sliced-images nil
+  "Configure org-sliced-images."
+  :group 'org)
+
+(defcustom org-sliced-images-consume-dummies t
+  "Overlay existing dummy lines instead of adding new ones."
+  :type 'boolean
+  :group 'org-sliced-images)
+
+;; Buffer variables
 
 (defvar-local org-inline-image-overlay-families nil
   "A list of elements corresponding to displayed inline images in the
@@ -56,6 +69,8 @@ The first element in each list is an overlay over the dummy lines
 inserted to support the slices. The remaining elements are the slices
 themselves; the last element is the topmost slice.")
 (put 'org-inline-image-overlay-families 'permanent-local t)
+
+;; Function overrides
 
 ;;;###autoload
 (defun org--delete-inline-image-overlay-family (ovfam)
@@ -253,9 +268,12 @@ buffer boundaries with possible narrowing."
                                         ;; Overlay link
                                         (setq start (org-element-property :begin link)
                                               end (org-element-property :end link))
-                                      (if (equal
-                                           (buffer-substring-no-properties (pos-bol 2) (pos-eol 2))
-                                           " ")
+                                      (if (and org-sliced-images-consume-dummies
+                                               (equal
+                                                (buffer-substring-no-properties
+                                                 (pos-bol 2)
+                                                 (pos-eol 2))
+                                                " "))
                                           ;; Consume next line as dummy
                                           (next-line)
                                         ;; Create dummy line
