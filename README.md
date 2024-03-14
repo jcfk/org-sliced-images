@@ -2,23 +2,26 @@
 
 This package ports insert-sliced-image functionality into org-mode, with respect
 to inline image display. This is supposed to make scrolling over large images
-more visually pleasing.
+more visually pleasing. It is meant to override a number org's default image
+display functions.
 
 ## Installation
 
-Be sure to re-bind your toggle key sequence to
-`org-sliced-images-toggle-inline-images`.
+Place the following aliases in your init.
+
+```
+(defalias 'org-remove-inline-images #'org-sliced-images-remove-inline-images)
+(defalias 'org-toggle-inline-images #'org-sliced-images-toggle-inline-images)
+(defalias 'org-display-inline-images #'org-sliced-images-display-inline-images)
+```
 
 ## Usage
 
-These are analogous to their `org-` counterparts:
+The package is intended to be used exactly like vanilla org, on account of the
+above aliases.
 
-- `org-sliced-images-toggle-inline-images` toggles the display of images
-- `org-sliced-images-display-inline-images` displays images
-- `org-sliced-images-remove-inline-images` removes images
-
-Concerning BEG and END arguments to the above functions, the beginning of the
-link to the image is the point considered.
+Concerning BEG and END arguments to the some of the functions, the beginning of
+the link to the image is the point considered.
 
 ### Dummy lines
 
