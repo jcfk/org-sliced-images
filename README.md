@@ -1,9 +1,8 @@
 # org-sliced-images
 
-This package ports insert-sliced-image functionality into org-mode, with
-respect to inline image display. This is supposed to make scrolling over
-large images more visually pleasing. The package overrides a number of
-function of the org-mode image display.
+This package ports insert-sliced-image functionality into org-mode, with respect
+to inline image display. This is supposed to make scrolling over large images
+more visually pleasing.
 
 ## Installation
 
