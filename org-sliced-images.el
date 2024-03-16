@@ -50,7 +50,7 @@
   "A list of elements corresponding to displayed inline images.
 Each element is a list of overlays making up the displayed image.
 
-The first element in each list is an overlay over the dummy lines
+The first element in each list is an overlay over all the dummy lines
 inserted to support the slices. The remaining elements are the slices
 themselves; the last element is the topmost slice.")
 (put 'org-sliced-images-inline-image-overlay-families 'permanent-local t)
@@ -58,7 +58,7 @@ themselves; the last element is the topmost slice.")
 ;; Function overrides
 
 (defun org-sliced-images--delete-inline-image-overlay-family (ovfam)
-  "Delete the overlay family OVFAM from its buffer."
+  "Delete the overlay family OVFAM."
   (dolist (ov (cdr ovfam))
     (delete-overlay ov))
   (delete-region (overlay-start (car ovfam)) (1+ (overlay-end (car ovfam)))) ;; 1+??
@@ -76,7 +76,7 @@ themselves; the last element is the topmost slice.")
 
 ;;;###autoload
 (defun org-sliced-images-toggle-inline-images (&optional include-linked beg end)
-  "Toggle the display of inline images.
+  "Toggle the display of inline images starting between BEG and END.
 INCLUDE-LINKED is passed to `org-sliced-images-display-inline-images'."
   (interactive "P")
   (if (org-sliced-images--inline-image-overlay-families beg end)
@@ -292,7 +292,7 @@ buffer boundaries with possible narrowing."
 
 ;;;###autoload
 (defun org-sliced-images-remove-inline-images (&optional beg end)
-  "Remove inline display of images which start between BEG and END."
+  "Remove inline display of images starting between BEG and END."
   (interactive)
   (let* ((beg (or beg (point-min)))
          (end (or end (point-max)))
