@@ -244,31 +244,34 @@ buffer boundaries with possible narrowing."
                               (image-flush image)
                               (org-with-point-at (org-element-property :begin link)
                                 (while (< y 1.0)
-                                  (let (start end)
+                                  (let (slice-start slice-end)
                                     (if (= y 0.0)
                                         ;; Overlay link
-                                        (setq start (org-element-property :begin link)
-                                              end (org-element-property :end link))
+                                        (progn
+                                          (setq slice-start (org-element-property :begin link)
+                                                slice-end (org-element-property :end link))
+                                          (end-of-line)
+                                          (delete-char 1)
+                                          (insert (propertize "\n" 'line-height t)))
+                                      (setq slice-start (pos-bol)
+                                            slice-end (1+ (pos-bol)))
                                       (if (and org-sliced-images-consume-dummies
-                                               (equal
-                                                (buffer-substring-no-properties
-                                                 (pos-bol 2)
-                                                 (pos-eol 2))
-                                                " "))
+                                               (equal (buffer-substring-no-properties
+                                                       (pos-bol) (pos-eol))
+                                                      " "))
                                           ;; Consume next line as dummy
-                                          (forward-line)
+                                          (progn
+                                            (put-text-property (pos-eol) (1+ (pos-eol)) 'line-height t)
+                                            (forward-line))
                                         ;; Create dummy line
-                                        (end-of-line 1)
-                                        (insert (propertize "\n" 'line-height t))
-                                        (insert " "))
-                                      (setq start (pos-bol)
-                                            end (pos-eol))
+                                        (insert " ")
+                                        (insert (propertize "\n" 'line-height t)))
                                       (if (not dummy-zone-start)
-                                          (setq dummy-zone-start start)))
-                                    (setq dummy-zone-end end)
+                                          (setq dummy-zone-start slice-start))
+                                      (setq dummy-zone-end slice-end))
                                     (push (org-sliced-images--make-inline-image-overlay
-                                           start
-                                           end
+                                           slice-start
+                                           slice-end
                                            (list (list 'slice 0 y 1.0 dy) image))
                                           ovfam))
                                   (setq y (+ y dy))))
