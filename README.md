@@ -29,4 +29,6 @@ Dummy lines are added to support slice overlays. Lines matching dummy lines
 coming directly after a link will be overlaid, instead of adding new ones, if
 `org-sliced-images-consume-dummies` is t.
 
+## Todo
 
+- Remove gap above last slice when using org-indent-mode
