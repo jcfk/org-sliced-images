@@ -29,6 +29,18 @@ Dummy lines are added to support slice overlays. Lines matching dummy lines
 coming directly after a link will be overlaid, instead of adding new ones, if
 `org-sliced-images-consume-dummies` is t.
 
+## Comparisons
+
+Here's how this package compares to other attempts to make image scrolling nice.
+
+- [iscroll](https://github.com/casouri/iscroll): iscroll works by making you
+  rebind your movement keys to a function that calculates and adds a vertical
+  scroll. org-sliced-images works by inserting images as slices when they are
+  toggled; you can then move over these slices however you want, resulting in a
+  faster and more "native" experience.
+- pixel-scroll -based methods: These only work with the mouse wheel and are very
+  resource intensive.
+
 ## Todo
 
 - Remove gap above last slice when using org-indent-mode
