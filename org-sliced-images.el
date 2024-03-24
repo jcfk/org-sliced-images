@@ -238,7 +238,7 @@ buffer boundaries with possible narrowing."
                           (when image
                             (let* ((image-pixel-cons (image-size image t))
                                    (image-pixel-h (cdr image-pixel-cons))
-                                   (image-line-h (/ image-pixel-h (default-font-height) 1.0))
+                                   (image-line-h (/ image-pixel-h (default-font-height) 1.0001))
                                    (y 0.0) (dy (/ image-line-h))
                                    (dummy-zone-start nil)
                                    (dummy-zone-end nil)
