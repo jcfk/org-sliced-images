@@ -5,7 +5,7 @@ built-in `insert-sliced-image`. This improves the image scrolling experience.
 
 ## Installation
 
-Get me on MELPA. `use-package` example:
+Get me on MELPA! `use-package` example:
 
 ```
 (use-package org-sliced-images
@@ -49,4 +49,3 @@ Here's how this package compares to other attempts to make image scrolling nice.
 
 ## Todo
 
-- Remove gap above last slice when using org-indent-mode
