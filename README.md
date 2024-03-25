@@ -23,11 +23,15 @@ above aliases.
 Concerning BEG and END arguments to the some of the functions, the beginning of
 the link to the image is the point considered.
 
-### Dummy lines
+### Customization
 
-Dummy lines are added to support slice overlays. Lines matching dummy lines
-coming directly after a link will be overlaid, instead of adding new ones, if
-`org-sliced-images-consume-dummies` is t.
+- `org-sliced-images-consume-dummies` Dummy lines are used to support slice
+  overlays. If non-nil, lines matching dummy lines coming directly after a link
+  will be overlaid, instead of adding new ones.
+- `org-sliced-images-round-image-height` If non-nil, round the height of images
+  to be a multiple of the font height. This is useful for avoiding gaps when
+  prefixing display lines with extra characters, as with `org-indent-mode` or
+  line numbers.
 
 ## Comparisons
 

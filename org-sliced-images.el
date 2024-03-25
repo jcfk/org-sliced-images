@@ -45,7 +45,16 @@
   :group 'org)
 
 (defcustom org-sliced-images-consume-dummies t
-  "Overlay existing dummy lines instead of adding new ones."
+  "If non-nil, overlay existing dummy lines instead of adding new ones."
+  :type 'boolean
+  :group 'org-sliced-images)
+
+(defcustom org-sliced-images-round-image-height nil
+  "If non-nil, resize images to make height a multiple of the font height.
+
+This is desirable if lines holding slices also contain visible characters, as
+with `org-indent-mode' or line-numbering. The image height is rounded to the
+nearest multiple of the `default-font-height'."
   :type 'boolean
   :group 'org-sliced-images)
 
@@ -241,48 +250,55 @@ buffer boundaries with possible narrowing."
                           (when image
                             (let* ((image-pixel-cons (image-size image t))
                                    (image-pixel-h (cdr image-pixel-cons))
-                                   (image-line-h (/ image-pixel-h (default-font-height) 1.0001))
-                                   (y 0.0) (dy (/ image-line-h))
-                                   (dummy-zone-start nil)
-                                   (dummy-zone-end nil)
-                                   (ovfam nil))
-                              (image-flush image)
-                              (org-with-point-at (org-element-property :begin link)
-                                (while (< y 1.0)
-                                  (let (slice-start slice-end)
-                                    (if (= y 0.0)
-                                        ;; Overlay link
-                                        (progn
-                                          (setq slice-start (org-element-property :begin link)
-                                                slice-end (org-element-property :end link))
-                                          (end-of-line)
-                                          (delete-char 1)
-                                          (insert (propertize "\n" 'line-height t)))
-                                      (setq slice-start (pos-bol)
-                                            slice-end (1+ (pos-bol)))
-                                      (if (and org-sliced-images-consume-dummies
-                                               (equal (buffer-substring-no-properties
-                                                       (pos-bol) (pos-eol))
-                                                      " "))
-                                          ;; Consume next line as dummy
+                                   (font-height (default-font-height)))
+                              ;; Round image height
+                              (when org-sliced-images-round-image-height
+                                (setq image-pixel-h
+                                      (truncate (* (fround (/ image-pixel-h font-height 1.0)) font-height)))
+                                (setf (image-property image :height) image-pixel-h)
+                                (setf (image-property image :width) nil))
+                              (let* ((image-line-h (/ image-pixel-h font-height 1.0001))
+                                     (y 0.0) (dy (/ image-line-h))
+                                     (dummy-zone-start nil)
+                                     (dummy-zone-end nil)
+                                     (ovfam nil))
+                                (image-flush image)
+                                (org-with-point-at (org-element-property :begin link)
+                                  (while (< y 1.0)
+                                    (let (slice-start slice-end)
+                                      (if (= y 0.0)
+                                          ;; Overlay link
                                           (progn
-                                            (put-text-property (pos-eol) (1+ (pos-eol)) 'line-height t)
-                                            (forward-line))
-                                        ;; Create dummy line
-                                        (insert " ")
-                                        (insert (propertize "\n" 'line-height t)))
-                                      (if (not dummy-zone-start)
-                                          (setq dummy-zone-start slice-start))
-                                      (setq dummy-zone-end slice-end))
-                                    (push (org-sliced-images--make-inline-image-overlay
-                                           slice-start
-                                           slice-end
-                                           (list (list 'slice 0 y 1.0 dy) image))
-                                          ovfam))
-                                  (setq y (+ y dy))))
-                              (setq end (+ end (* 2 (- (ceiling image-line-h) 1))))
-                              (push (make-overlay dummy-zone-start dummy-zone-end) ovfam)
-                              (push ovfam org-sliced-images-inline-image-overlay-families))))))))))))))))
+                                            (setq slice-start (org-element-property :begin link)
+                                                  slice-end (org-element-property :end link))
+                                            (end-of-line)
+                                            (delete-char 1)
+                                            (insert (propertize "\n" 'line-height t)))
+                                        (setq slice-start (pos-bol)
+                                              slice-end (1+ (pos-bol)))
+                                        (if (and org-sliced-images-consume-dummies
+                                                 (equal (buffer-substring-no-properties
+                                                         (pos-bol) (pos-eol))
+                                                        " "))
+                                            ;; Consume next line as dummy
+                                            (progn
+                                              (put-text-property (pos-eol) (1+ (pos-eol)) 'line-height t)
+                                              (forward-line))
+                                          ;; Create dummy line
+                                          (insert " ")
+                                          (insert (propertize "\n" 'line-height t)))
+                                        (if (not dummy-zone-start)
+                                            (setq dummy-zone-start slice-start))
+                                        (setq dummy-zone-end slice-end))
+                                      (push (org-sliced-images--make-inline-image-overlay
+                                             slice-start
+                                             slice-end
+                                             (list (list 'slice 0 y 1.0 dy) image))
+                                            ovfam))
+                                    (setq y (+ y dy))))
+                                (setq end (+ end (* 2 (- (ceiling image-line-h) 1))))
+                                (push (make-overlay dummy-zone-start dummy-zone-end) ovfam)
+                                (push ovfam org-sliced-images-inline-image-overlay-families)))))))))))))))))
 
 (defun org-sliced-images--remove-overlay-family (ov after _beg _end &optional _len)
   "Remove inline display overlay family if the area is modified.
