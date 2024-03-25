@@ -1,19 +1,21 @@
-# org-sliced-images
+# org-sliced-images [![MELPA](https://melpa.org/packages/org-sliced-images-badge.svg)](https://melpa.org/#/org-sliced-images)
 
-This package ports insert-sliced-image functionality into org-mode, with respect
-to inline image display. This is supposed to make scrolling over large images
-more visually pleasing. It is meant to override a number org's default image
-display functions.
+This package displays org-mode inline images in a sliced manner, like the
+built-in `insert-sliced-image`. This improves the image scrolling experience.
 
 ## Installation
 
-Place the following aliases in your init.
+Get me on MELPA. `use-package` example:
 
 ```
-(defalias 'org-remove-inline-images #'org-sliced-images-remove-inline-images)
-(defalias 'org-toggle-inline-images #'org-sliced-images-toggle-inline-images)
-(defalias 'org-display-inline-images #'org-sliced-images-display-inline-images)
+(use-package org-sliced-images
+  :config
+  (defalias 'org-remove-inline-images #'org-sliced-images-remove-inline-images)
+  (defalias 'org-toggle-inline-images #'org-sliced-images-toggle-inline-images)
+  (defalias 'org-display-inline-images #'org-sliced-images-display-inline-images))
 ```
+
+The above aliases must be present regardless of how the package is loaded.
 
 ## Usage
 
