@@ -317,7 +317,28 @@ BEG, END, LEN will be passed by the overlay."
               (delq ovfam org-sliced-images-inline-image-overlay-families))
         (org-sliced-images--delete-inline-image-overlay-family ovfam)))))
 
-;; ---
+;;;###autoload
+(define-minor-mode org-sliced-images-mode
+  "Display images as sliced images in org-mode, like insert-sliced-image. This
+makes scrolling nicer."
+  :group org-sliced-images
+  (let (display)
+    (if org-sliced-images-mode
+        (progn
+          (when (org--inline-image-overlays)
+            (setq display t)
+            (org-toggle-inline-images))
+          (advice-add 'org-remove-inline-images  :override #'org-sliced-images-remove-inline-images)
+          (advice-add 'org-toggle-inline-images  :override #'org-sliced-images-toggle-inline-images)
+          (advice-add 'org-display-inline-images :override #'org-sliced-images-display-inline-images))
+      (when (org-sliced-images--inline-image-overlay-families)
+        (setq display t)
+        (org-toggle-inline-images))
+      (advice-remove 'org-remove-inline-images  #'org-sliced-images-remove-inline-images)
+      (advice-remove 'org-toggle-inline-images  #'org-sliced-images-toggle-inline-images)
+      (advice-remove 'org-display-inline-images #'org-sliced-images-display-inline-images))
+    (when display
+      (org-toggle-inline-images))))
 
 (provide 'org-sliced-images)
 
