@@ -44,11 +44,6 @@
   "Configure org-sliced-images."
   :group 'org)
 
-(defcustom org-sliced-images-consume-dummies t
-  "If non-nil, overlay existing dummy lines instead of adding new ones."
-  :type 'boolean
-  :group 'org-sliced-images)
-
 (defcustom org-sliced-images-round-image-height nil
   "If non-nil, resize images to make height a multiple of the font height.
 
@@ -58,15 +53,19 @@ nearest multiple of the `default-font-height'."
   :type 'boolean
   :group 'org-sliced-images)
 
+(defcustom org-sliced-images-max-sliced-height 0
+  "The maximum allowed height for image slices.
+
+If the value is 0, it means no restriction. If the value is a number greater
+than or equal to 1, it represents the multiple of `default-line-height'."
+  :type 'natnum
+  :group 'org-sliced-images)
+
 ;; Buffer variables
 
 (defvar-local org-sliced-images-inline-image-overlay-families nil
   "A list of elements corresponding to displayed inline images.
-Each element is a list of overlays making up the displayed image.
-
-The first element in each list is an overlay over all the dummy lines
-inserted to support the slices. The remaining elements are the slices
-themselves; the last element is the topmost slice.")
+Each element is a list of overlays making up the displayed image.")
 (put 'org-sliced-images-inline-image-overlay-families 'permanent-local t)
 
 ;; Function overrides
@@ -75,7 +74,6 @@ themselves; the last element is the topmost slice.")
   "Delete the overlay family OVFAM."
   (dolist (ov (cdr ovfam))
     (delete-overlay ov))
-  (delete-region (overlay-start (car ovfam)) (1+ (overlay-end (car ovfam)))) ;; 1+??
   (delete-overlay (car ovfam)))
 
 (defun org-sliced-images--inline-image-overlay-families (&optional beg end)
@@ -246,59 +244,68 @@ buffer boundaries with possible narrowing."
                                 'org-image-overlay)))
                       (if (and (car-safe old) refresh)
                           (image-flush (overlay-get (cdr old) 'display))
-                        (let ((image (org-sliced-images--create-inline-image file width)))
-                          (when image
-                            (let* ((image-pixel-cons (image-size image t))
-                                   (image-pixel-h (cdr image-pixel-cons))
-                                   (font-height (default-font-height)))
-                              ;; Round image height
-                              (when org-sliced-images-round-image-height
-                                (setq image-pixel-h
-                                      (truncate (* (fround (/ image-pixel-h font-height 1.0)) font-height)))
-                                (setf (image-property image :height) image-pixel-h)
-                                (setf (image-property image :width) nil))
-                              (let* ((image-line-h (/ image-pixel-h font-height 1.0001))
-                                     (y 0.0) (dy (/ image-line-h))
-                                     (dummy-zone-start nil)
-                                     (dummy-zone-end nil)
-                                     (ovfam nil))
-                                (image-flush image)
-                                (org-with-point-at (org-element-property :begin link)
-                                  (while (< y 1.0)
-                                    (let (slice-start slice-end)
-                                      (if (= y 0.0)
-                                          ;; Overlay link
-                                          (progn
-                                            (setq slice-start (org-element-property :begin link)
-                                                  slice-end (org-element-property :end link))
-                                            (end-of-line)
-                                            (delete-char 1)
-                                            (insert (propertize "\n" 'line-height t)))
-                                        (setq slice-start (pos-bol)
-                                              slice-end (1+ (pos-bol)))
-                                        (if (and org-sliced-images-consume-dummies
-                                                 (equal (buffer-substring-no-properties
-                                                         (pos-bol) (pos-eol))
-                                                        " "))
-                                            ;; Consume next line as dummy
-                                            (progn
-                                              (put-text-property (pos-eol) (1+ (pos-eol)) 'line-height t)
-                                              (forward-line))
-                                          ;; Create dummy line
-                                          (insert " ")
-                                          (insert (propertize "\n" 'line-height t)))
-                                        (if (not dummy-zone-start)
-                                            (setq dummy-zone-start slice-start))
-                                        (setq dummy-zone-end slice-end))
+                        (when-let ((image (org-sliced-images--create-inline-image file width)))
+                          (image-flush image)
+                          (let* ((image-pixel-cons (image-size image t))
+                                 (image-pixel-h (cdr image-pixel-cons))
+                                 (font-height (default-font-height))
+                                 (sliced-num-for-image (floor image-pixel-h font-height))
+                                 (link-begin (org-element-property :begin link))
+                                 (link-end (org-element-property :end link))
+                                 (link-len (- link-end link-begin))
+                                 (link-supported-sliced-num (floor (1+ link-len) 2)))
+                            ;; Round image height
+                            (when org-sliced-images-round-image-height
+                              (setq image-pixel-h
+                                    (truncate (* (fround (/ image-pixel-h font-height 1.0)) font-height)))
+                              (setq sliced-num-for-image (floor image-pixel-h font-height))
+                              (setf (image-property image :height) image-pixel-h)
+                              (setf (image-property image :width) nil))
+                            (when (and (> org-sliced-images-max-sliced-height 0)
+                                       (natnump org-sliced-images-max-sliced-height)
+                                       (>= (floor sliced-num-for-image link-supported-sliced-num)
+                                           org-sliced-images-max-sliced-height))
+                              (setq sliced-num-for-image (* link-supported-sliced-num org-sliced-images-max-sliced-height))
+                              (setq image-pixel-h (* sliced-num-for-image font-height))
+                              (setf (image-property image :height) image-pixel-h)
+                              (setf (image-property image :width) nil))
+                            (let* ((sliced-num (min sliced-num-for-image link-supported-sliced-num))
+                                   (calc-sliced-height (floor image-pixel-h sliced-num))
+                                   (max-sliced-height (* org-sliced-images-max-sliced-height font-height))
+                                   (sliced-height (if (and (> org-sliced-images-max-sliced-height 0)
+                                                           (natnump org-sliced-images-max-sliced-height)
+                                                           (> calc-sliced-height max-sliced-height))
+                                                      max-sliced-height
+                                                    calc-sliced-height ))
+                                   (img-y 0)
+                                   (ovfam nil))
+                              (org-with-point-at link-begin
+                                (dotimes (i sliced-num)
+                                  ;; Use one character of the link to display the sliced image,
+                                  ;; one character to display the newline character,
+                                  ;; and the remaining characters to display the last sliced image.
+                                  (let* ((img-text-start (+ link-begin (* 2 i)))
+                                         (img-text-end (if (< i (1- sliced-num))
+                                                           (1+ img-text-start)
+                                                         link-end))
+                                         ;; Make sliced images uniformly tall.
+                                         ;; But The last sliced image will contain the remaining portion of the image,
+                                         ;; with a height possibly determined by `(mod image-pixel-h font-height)`
+                                         (sliced-img-height (if (< i (1- sliced-num))
+                                                                sliced-height
+                                                              (- image-pixel-h img-y))))
+                                    (push (org-sliced-images--make-inline-image-overlay
+                                           img-text-start img-text-end
+                                           (list (list 'slice 0 img-y
+                                                       (car image-pixel-cons) sliced-img-height)
+                                                 image))
+                                          ovfam)
+                                    (when (< i (1- sliced-num))
                                       (push (org-sliced-images--make-inline-image-overlay
-                                             slice-start
-                                             slice-end
-                                             (list (list 'slice 0 y 1.0 dy) image))
+                                             img-text-end (1+ img-text-end) "\n")
                                             ovfam))
-                                    (setq y (+ y dy))))
-                                (setq end (+ end (* 2 (- (ceiling image-line-h) 1))))
-                                (push (make-overlay dummy-zone-start dummy-zone-end) ovfam)
-                                (push ovfam org-sliced-images-inline-image-overlay-families)))))))))))))))))
+                                    (setq img-y (+ img-y sliced-img-height)))))
+                              (push ovfam org-sliced-images-inline-image-overlay-families))))))))))))))))
 
 (defun org-sliced-images--remove-overlay-family (ov after _beg _end &optional _len)
   "Remove inline display overlay family if the area is modified.
@@ -328,7 +335,29 @@ BEG, END, LEN will be passed by the overlay."
               (delq ovfam org-sliced-images-inline-image-overlay-families))
         (org-sliced-images--delete-inline-image-overlay-family ovfam)))))
 
-;; ---
+;;;###autoload
+(define-minor-mode org-sliced-images-mode
+  "Display images as sliced images in org-mode, like insert-sliced-image. This
+makes scrolling nicer."
+  :global t
+  :group 'org-sliced-images
+  (let (display)
+    (if org-sliced-images-mode
+        (progn
+          (when (org--inline-image-overlays)
+            (setq display t)
+            (org-toggle-inline-images))
+          (advice-add 'org-remove-inline-images  :override #'org-sliced-images-remove-inline-images)
+          (advice-add 'org-toggle-inline-images  :override #'org-sliced-images-toggle-inline-images)
+          (advice-add 'org-display-inline-images :override #'org-sliced-images-display-inline-images))
+      (when (org-sliced-images--inline-image-overlay-families)
+        (setq display t)
+        (org-toggle-inline-images))
+      (advice-remove 'org-remove-inline-images  #'org-sliced-images-remove-inline-images)
+      (advice-remove 'org-toggle-inline-images  #'org-sliced-images-toggle-inline-images)
+      (advice-remove 'org-display-inline-images #'org-sliced-images-display-inline-images))
+    (when display
+      (org-toggle-inline-images))))
 
 (provide 'org-sliced-images)
 
