@@ -71,7 +71,7 @@ themselves; the last element is the topmost slice.")
 
 ;; Function overrides
 
-(defun org-sliced-images--delete-inline-image-overlay-family (ovfam)
+(defun org-sliced-images--remove-overlay-family (ovfam)
   "Delete the overlay family OVFAM."
   (dolist (ov (cdr ovfam))
     (delete-overlay ov))
@@ -142,7 +142,7 @@ The overlay is returned."
     (overlay-put ov 'face 'default)
     (overlay-put ov 'org-image-overlay t)
     (overlay-put ov 'modification-hooks
-                 (list 'org-sliced-images--remove-overlay-family))
+                 (list 'org-sliced-images--handle-modified-overlay-family))
     (when (boundp 'image-map)
       (overlay-put ov 'keymap image-map))
     ov))
@@ -300,7 +300,7 @@ buffer boundaries with possible narrowing."
                                 (push (make-overlay dummy-zone-start dummy-zone-end) ovfam)
                                 (push ovfam org-sliced-images-inline-image-overlay-families)))))))))))))))))
 
-(defun org-sliced-images--remove-overlay-family (ov after _beg _end &optional _len)
+(defun org-sliced-images--handle-modified-overlay-family (ov after _beg _end &optional _len)
   "Remove inline display overlay family if the area is modified.
 This function is to be used as an overlay modification hook; OV, AFTER,
 BEG, END, LEN will be passed by the overlay."
@@ -312,7 +312,7 @@ BEG, END, LEN will be passed by the overlay."
         (when (memq ov ovfam)
           (setq org-sliced-images-inline-image-overlay-families
                 (delq ovfam org-sliced-images-inline-image-overlay-families))
-          (org-sliced-images--delete-inline-image-overlay-family ovfam)
+          (org-sliced-images--remove-overlay-family ovfam)
           (throw 'break nil))))))
 
 ;;;###autoload
@@ -326,7 +326,7 @@ BEG, END, LEN will be passed by the overlay."
       (when (memq (car (last ovfam)) overlays)
         (setq org-sliced-images-inline-image-overlay-families
               (delq ovfam org-sliced-images-inline-image-overlay-families))
-        (org-sliced-images--delete-inline-image-overlay-family ovfam)))))
+        (org-sliced-images--remove-overlay-family ovfam)))))
 
 ;; ---
 
