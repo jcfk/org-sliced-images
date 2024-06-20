@@ -75,7 +75,7 @@ themselves; the last element is the topmost slice.")
   "Delete the overlay family OVFAM."
   (dolist (ov (cdr ovfam))
     (delete-overlay ov))
-  (delete-region (overlay-start (car ovfam)) (1+ (overlay-end (car ovfam)))) ;; 1+??
+  (delete-region (overlay-start (car ovfam)) (overlay-end (car ovfam)))
   (delete-overlay (car ovfam)))
 
 (defun org-sliced-images--inline-image-overlay-families (&optional beg end)
@@ -289,7 +289,7 @@ buffer boundaries with possible narrowing."
                                           (insert (propertize "\n" 'line-height t)))
                                         (if (not dummy-zone-start)
                                             (setq dummy-zone-start slice-start))
-                                        (setq dummy-zone-end slice-end))
+                                        (setq dummy-zone-end (1+ slice-end)))
                                       (push (org-sliced-images--make-inline-image-overlay
                                              slice-start
                                              slice-end
