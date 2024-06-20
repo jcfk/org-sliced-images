@@ -3,6 +3,8 @@
 This package displays org-mode inline images in a sliced manner, like the
 built-in `insert-sliced-image`. This improves the image scrolling experience.
 
+![example](media/example.mp4)
+
 ## Installation
 
 Get me on MELPA! `use-package` example:
