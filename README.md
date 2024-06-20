@@ -3,7 +3,7 @@
 This package displays org-mode inline images in a sliced manner, like the
 built-in `insert-sliced-image`. This improves the image scrolling experience.
 
-![](media/example.mp4)
+https://raw.githubusercontent.com/jcfk/org-sliced-images/main/media/example.mp4
 
 ## Installation
 
