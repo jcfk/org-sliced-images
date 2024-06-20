@@ -9,18 +9,18 @@ Get me on MELPA! `use-package` example:
 
 ```
 (use-package org-sliced-images
-  :config
-  (defalias 'org-remove-inline-images #'org-sliced-images-remove-inline-images)
-  (defalias 'org-toggle-inline-images #'org-sliced-images-toggle-inline-images)
-  (defalias 'org-display-inline-images #'org-sliced-images-display-inline-images))
+  :ensure t
+  :config (org-sliced-images-mode))
 ```
-
-The above aliases must be present regardless of how the package is loaded.
 
 ## Usage
 
-The package is intended to be used exactly like vanilla org, on account of the
-above aliases.
+Use the global minor mode `org-sliced-images-mode` to enable sliced images. The
+mode advises the following functions:
+
+- `org-remove-inline-images`
+- `org-toggle-inline-images`
+- `org-display-inline-images`
 
 Concerning BEG and END arguments to the some of the functions, the beginning of
 the link to the image is the point considered.

@@ -329,7 +329,27 @@ BEG, END, LEN will be passed by the overlay."
               (delq ovfam org-sliced-images-inline-image-overlay-families))
         (org-sliced-images--remove-overlay-family ovfam)))))
 
-;; ---
+;; Minor mode
+
+;;;###autoload
+(define-minor-mode org-sliced-images-mode
+  "Toggle org-sliced-images-mode to display sliced images in `org-mode'."
+  :group 'org-sliced-images
+  :global t
+  (dolist (buffer (buffer-list))
+    (with-current-buffer buffer
+      (if (derived-mode-p 'org-mode)
+          (if org-sliced-images-mode
+              (org-remove-inline-images)
+            (org-sliced-images-remove-inline-images)))))
+  (if org-sliced-images-mode
+      (progn
+        (advice-add 'org-remove-inline-images :override #'org-sliced-images-remove-inline-images)
+        (advice-add 'org-toggle-inline-images :override #'org-sliced-images-toggle-inline-images)
+        (advice-add 'org-display-inline-images :override #'org-sliced-images-display-inline-images))
+    (advice-remove 'org-remove-inline-images #'org-sliced-images-remove-inline-images)
+    (advice-remove 'org-toggle-inline-images #'org-sliced-images-toggle-inline-images)
+    (advice-remove 'org-display-inline-images #'org-sliced-images-display-inline-images)))
 
 (provide 'org-sliced-images)
 
