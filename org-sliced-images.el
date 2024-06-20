@@ -75,7 +75,8 @@ themselves; the last element is the topmost slice.")
   "Delete the overlay family OVFAM."
   (dolist (ov (cdr ovfam))
     (delete-overlay ov))
-  (delete-region (overlay-start (car ovfam)) (overlay-end (car ovfam)))
+  (let ((inhibit-modification-hooks nil))
+    (delete-region (overlay-start (car ovfam)) (overlay-end (car ovfam))))
   (delete-overlay (car ovfam)))
 
 (defun org-sliced-images--inline-image-overlay-families (&optional beg end)
