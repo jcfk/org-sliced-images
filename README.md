@@ -33,9 +33,9 @@ the link to the image is the point considered.
   overlays. If non-nil, lines matching dummy lines coming directly after a link
   will be overlaid, instead of adding new ones.
 - `org-sliced-images-round-image-height` If non-nil, round the height of images
-  to be a multiple of the font height. This is useful for avoiding gaps when
-  prefixing display lines with extra characters, as with `org-indent-mode` or
-  line numbers.
+  to be a multiple of the font height. This should be used with things like
+  `org-indent-mode` or line numbering that add prefixes to slice lines, or else
+  you will typically have a visible gap above the final slice.
 
 ## Comparisons
 

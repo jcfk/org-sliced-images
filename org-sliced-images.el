@@ -52,9 +52,9 @@
 (defcustom org-sliced-images-round-image-height nil
   "If non-nil, resize images to make height a multiple of the font height.
 
-This is desirable if lines holding slices also contain visible characters, as
-with `org-indent-mode' or line-numbering. The image height is rounded to the
-nearest multiple of the `default-font-height'."
+This is useful for avoiding gaps when prefixing display lines with extra
+characters. The image height is rounded to the nearest multiple of the
+`default-font-height'."
   :type 'boolean
   :group 'org-sliced-images)
 
@@ -260,11 +260,14 @@ buffer boundaries with possible narrowing."
                                 (setf (image-property image :width) nil))
                               (let* ((image-line-h (/ image-pixel-h font-height 1.0001))
                                      (y 0.0) (dy (/ image-line-h))
+                                     (left-margin nil)
                                      (dummy-zone-start nil)
                                      (dummy-zone-end nil)
                                      (ovfam nil))
                                 (image-flush image)
                                 (org-with-point-at (org-element-property :begin link)
+                                  (when (> (current-column) 0)
+                                    (setq left-margin (current-column)))
                                   (while (< y 1.0)
                                     (let (slice-start slice-end)
                                       (if (= y 0.0)
@@ -283,10 +286,15 @@ buffer boundaries with possible narrowing."
                                                         " "))
                                             ;; Consume next line as dummy
                                             (progn
+                                              (when left-margin
+                                                (put-text-property slice-start slice-end
+                                                                   'line-prefix `(space :width ,left-margin)))
                                               (put-text-property (pos-eol) (1+ (pos-eol)) 'line-height t)
                                               (forward-line))
                                           ;; Create dummy line
-                                          (insert " ")
+                                          (insert (if left-margin
+                                                      (propertize " " 'line-prefix `(space :width ,left-margin))
+                                                    " "))
                                           (insert (propertize "\n" 'line-height t)))
                                         (if (not dummy-zone-start)
                                             (setq dummy-zone-start slice-start))
