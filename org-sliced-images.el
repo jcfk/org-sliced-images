@@ -372,12 +372,30 @@ BEG, END, LEN will be passed by the overlay."
       (progn
         (advice-add 'org-remove-inline-images :override #'org-sliced-images-remove-inline-images)
         (advice-add 'org-toggle-inline-images :override #'org-sliced-images-toggle-inline-images)
+        (add-hook 'before-save-hook 
+                  (lambda ()
+                    (when (eq major-mode 'org-mode)
+                      (org-remove-inline-images))))
+        (add-hook 'after-save-hook 
+                  (lambda ()
+                    (when (eq major-mode 'org-mode)
+                      (org-display-inline-images))))
         (advice-add '+org--toggle-inline-images-in-subtree :override #'org-sliced-images-+org--toggle-inline-images-in-subtree )
         (advice-add 'org-display-inline-images :override #'org-sliced-images-display-inline-images))
-    (advice-remove 'org-remove-inline-images #'org-sliced-images-remove-inline-images)
-    (advice-remove 'org-toggle-inline-images #'org-sliced-images-toggle-inline-images)
-    (advice-remove '+org--toggle-inline-images-in-subtree #'org-sliced-images-+org--toggle-inline-images-in-subtree )
-    (advice-remove 'org-display-inline-images #'org-sliced-images-display-inline-images)))
+    (progn
+      (advice-remove 'org-remove-inline-images #'org-sliced-images-remove-inline-images)
+      (advice-remove 'org-toggle-inline-images #'org-sliced-images-toggle-inline-images)
+      (remove-hook 'before-save-hook
+                   (lambda ()
+                     (when (eq major-mode 'org-mode)
+                       (org-remove-inline-images))))
+      (remove-hook 'after-save-hook 
+                   (lambda ()
+                     (when (eq major-mode 'org-mode)
+                       (org-display-inline-images))))
+      (advice-remove '+org--toggle-inline-images-in-subtree #'org-sliced-images-+org--toggle-inline-images-in-subtree )
+      (advice-remove 'org-display-inline-images #'org-sliced-images-display-inline-images))))
+
 
 (provide 'org-sliced-images)
 
