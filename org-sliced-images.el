@@ -5,7 +5,7 @@
 ;; Version: 0.1
 ;; Homepage: https://github.com/jcfk/org-sliced-images
 
-;; Package-Requires: ((emacs "29.1") (org "9.6.15"))
+;; Package-Requires: ((emacs "28.2") (org "9.6.15"))
 
 ;; Permission is hereby granted, free of charge, to any person obtaining a copy
 ;; of this software and associated documentation files (the “Software”), to deal
