@@ -9,16 +9,17 @@ built-in `insert-sliced-image`. This improves the image scrolling experience.
 
 Get me on MELPA! `use-package` example:
 
-```
+```elisp
 (use-package org-sliced-images
   :ensure t
-  :config (org-sliced-images-mode))
+  :config
+  (org-sliced-images-mode 1))
 ```
 
 ## Usage
 
-Use the global minor mode `org-sliced-images-mode` to enable sliced images. The
-mode advises the following functions:
+Toggle the global minor mode `org-sliced-images-mode` to enable sliced images.
+The mode advises the following functions:
 
 - `org-remove-inline-images`
 - `org-toggle-inline-images`
