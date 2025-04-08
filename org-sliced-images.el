@@ -72,6 +72,16 @@ themselves; the last element is the topmost slice.")
 
 ;;;; Function overrides
 
+(defmacro org-sliced-images--without-undo (&rest body)
+  "Evaluate BODY with current buffer undo recording disabled."
+  `(let ((saved-undo-list buffer-undo-list))
+     (unwind-protect
+         (progn
+           (buffer-disable-undo)
+           ,@body)
+       (buffer-enable-undo)
+       (setq buffer-undo-list saved-undo-list))))
+
 (defun org-sliced-images--remove-overlay-family (ovfam)
   "Delete the overlay family OVFAM."
   (let ((container-ov (car ovfam))
@@ -94,51 +104,17 @@ themselves; the last element is the topmost slice.")
      org-sliced-images--image-overlay-families)
     result))
 
-(defun org-sliced-images--make-inline-image-overlay (start end spec)
-  "Make overlay from START to END with display value SPEC.
-The overlay is returned."
-  (let ((ov (make-overlay start end)))
-    (overlay-put ov 'display spec)
-    (overlay-put ov 'face 'default)
-    (overlay-put ov 'org-image-overlay t)
-    (overlay-put ov 'modification-hooks
-                 (list 'org-sliced-images--handle-modified-overlay-family))
-    (when (boundp 'image-map)
-      (overlay-put ov 'keymap image-map))
-    ov))
-
-(defun org-sliced-images--handle-modified-overlay-family (ov after _beg _end &optional _len)
-  "Remove inline display overlay family if the area is modified.
-This function is to be used as an overlay modification hook; OV, AFTER,
-BEG, END, LEN will be passed by the overlay."
-  (when (and ov after)
-    (when (overlay-get ov 'org-image-overlay)
-      (image-flush (cadr (overlay-get ov 'display))))
-    (catch 'break
-      (dolist (ovfam org-sliced-images--image-overlay-families)
-        (when (memq ov ovfam)
-          (setq org-sliced-images--image-overlay-families
-                (delq ovfam org-sliced-images--image-overlay-families))
-          (org-sliced-images--remove-overlay-family ovfam)
-          (throw 'break nil))))))
-
 ;;;###autoload
-(defun org-sliced-images-toggle-inline-images (&optional include-linked beg end)
-  "Toggle the display of inline images starting between BEG and END.
-INCLUDE-LINKED is passed to `org-sliced-images-display-inline-images'."
-  (interactive "P")
-  (if (org-sliced-images--get-image-overlay-families beg end)
-      (progn
-        (org-sliced-images-remove-inline-images beg end)
-        (when (called-interactively-p 'interactive)
-          (message "Inline image display turned off")))
-    (org-sliced-images-display-inline-images include-linked nil beg end)
-    (when (called-interactively-p 'interactive)
-      (let ((new (org-sliced-images--get-image-overlay-families beg end)))
-        (message
-         (if new
-             (format "%d images displayed inline" (length new))
-           "No images to display inline"))))))
+(defun org-sliced-images-remove-inline-images (&optional beg end)
+  "Remove inline display of images starting between BEG and END."
+  (interactive)
+  (org-sliced-images--without-undo
+   (mapc
+    (lambda (ovfam)
+      (setq org-sliced-images--image-overlay-families
+            (delq ovfam org-sliced-images--image-overlay-families))
+      (org-sliced-images--remove-overlay-family ovfam))
+    (org-sliced-images--get-image-overlay-families beg end))))
 
 (defun org-sliced-images--create-inline-image (file width)
   "Create image located at FILE, or return nil.
@@ -167,6 +143,34 @@ according to the value of `org-display-remote-inline-images'."
                          'imagemagick)
                     remote?
                     :width width :scale 1 :ascent 'center))))
+
+(defun org-sliced-images--handle-modified-overlay-family (ov after _beg _end &optional _len)
+  "Remove inline display overlay family if the area is modified.
+This function is to be used as an overlay modification hook; OV, AFTER,
+BEG, END, LEN will be passed by the overlay."
+  (when (and ov after)
+    (when (overlay-get ov 'org-image-overlay)
+      (image-flush (cadr (overlay-get ov 'display))))
+    (catch 'break
+      (dolist (ovfam org-sliced-images--image-overlay-families)
+        (when (memq ov ovfam)
+          (setq org-sliced-images--image-overlay-families
+                (delq ovfam org-sliced-images--image-overlay-families))
+          (org-sliced-images--remove-overlay-family ovfam)
+          (throw 'break nil))))))
+
+(defun org-sliced-images--make-inline-image-overlay (start end spec)
+  "Make overlay from START to END with display value SPEC.
+The overlay is returned."
+  (let ((ov (make-overlay start end)))
+    (overlay-put ov 'display spec)
+    (overlay-put ov 'face 'default)
+    (overlay-put ov 'org-image-overlay t)
+    (overlay-put ov 'modification-hooks
+                 (list 'org-sliced-images--handle-modified-overlay-family))
+    (when (boundp 'image-map)
+      (overlay-put ov 'keymap image-map))
+    ov))
 
 ;;;###autoload
 (defun org-sliced-images-display-inline-images (&optional include-linked refresh beg end)
@@ -246,7 +250,6 @@ compatible with Emacs 28+."
                           ;; Support Emacs 30+ align in a sec
                           ;; (align (and (fboundp 'org-image--align)
                           ;;             (org-image--align link)))
-                          ;; TODO this should really respect sliced images as well
                           (old (get-char-property-and-overlay
                                 (org-element-property :begin link)
                                 'org-image-overlay)))
@@ -254,83 +257,91 @@ compatible with Emacs 28+."
                           (image-flush (overlay-get (cdr old) 'display))
                         (let ((image (org-sliced-images--create-inline-image file width)))
                           (when image
-                            (let* ((image-pixel-cons (image-size image t))
-                                   (image-pixel-h (cdr image-pixel-cons))
-                                   (font-height (default-font-height)))
-                              ;; Round image height
-                              (when org-sliced-images-round-image-height
-                                (setq image-pixel-h
-                                      (truncate (* (fround (/ image-pixel-h font-height 1.0)) font-height)))
-                                (setf (image-property image :height) image-pixel-h)
-                                (setf (image-property image :width) nil))
-                              (let* ((image-line-h (/ image-pixel-h font-height 1.0001))
-                                     (y 0.0) (dy (/ image-line-h))
-                                     (left-margin nil)
-                                     (dummy-zone-start nil)
-                                     (dummy-zone-end nil)
-                                     (ovfam nil))
-                                (image-flush image)
-                                (org-with-point-at (org-element-property :begin link)
-                                  (when (> (current-column) 0)
-                                    (setq left-margin (current-column)))
-                                  (while (< y 1.0)
-                                    (let (slice-start slice-end)
-                                      (if (= y 0.0)
-                                          ;; Overlay link
-                                          (progn
-                                            (setq slice-start (org-element-property :begin link))
-                                            (setq slice-end (org-element-property :end link))
-                                            (end-of-line)
-                                            (delete-char 1)
-                                            (insert (propertize "\n" 'line-height t)))
-                                        (setq slice-start (line-beginning-position))
-                                        (setq slice-end (1+ (line-beginning-position)))
-                                        (if (and org-sliced-images-consume-dummies
-                                                 (equal
-                                                  (buffer-substring-no-properties
-                                                   (line-beginning-position)
-                                                   (line-end-position))
-                                                  " "))
-                                            ;; Consume next line as dummy
-                                            (progn
-                                              (when left-margin
-                                                (put-text-property
-                                                 slice-start
-                                                 slice-end
-                                                 'line-prefix
-                                                 `(space :width ,left-margin)))
-                                              (put-text-property
-                                               (line-end-position) (1+ (line-end-position)) 'line-height t)
-                                              (forward-line))
-                                          ;; Create dummy line
-                                          (insert (if left-margin
-                                                      (propertize " " 'line-prefix `(space :width ,left-margin))
-                                                    " "))
-                                          (insert (propertize "\n" 'line-height t)))
-                                        (when (not dummy-zone-start)
-                                          (setq dummy-zone-start slice-start))
-                                        (setq dummy-zone-end (1+ slice-end)))
-                                      (push
-                                       (org-sliced-images--make-inline-image-overlay
-                                        slice-start
-                                        slice-end
-                                        (list (list 'slice 0 y 1.0 dy) image))
-                                       ovfam))
-                                    (setq y (+ y dy))))
-                                (setq end (+ end (* 2 (- (ceiling image-line-h) 1))))
-                                (push (make-overlay dummy-zone-start dummy-zone-end) ovfam)
-                                (push ovfam org-sliced-images--image-overlay-families)))))))))))))))))
+                            (org-sliced-images--without-undo
+                             (let* ((image-pixel-cons (image-size image t))
+                                    (image-pixel-h (cdr image-pixel-cons))
+                                    (font-height (default-font-height)))
+                               ;; Round image height
+                               (when org-sliced-images-round-image-height
+                                 (setq image-pixel-h
+                                       (truncate (* (fround (/ image-pixel-h font-height 1.0)) font-height)))
+                                 (setf (image-property image :height) image-pixel-h)
+                                 (setf (image-property image :width) nil))
+                               (let* ((image-line-h (/ image-pixel-h font-height 1.0001))
+                                      (y 0.0) (dy (/ image-line-h))
+                                      (left-margin nil)
+                                      (dummy-zone-start nil)
+                                      (dummy-zone-end nil)
+                                      (ovfam nil))
+                                 (image-flush image)
+                                 (org-with-point-at (org-element-property :begin link)
+                                   (when (> (current-column) 0)
+                                     (setq left-margin (current-column)))
+                                   (while (< y 1.0)
+                                     (let (slice-start slice-end)
+                                       (if (= y 0.0)
+                                           ;; Overlay link
+                                           (progn
+                                             (setq slice-start (org-element-property :begin link))
+                                             (setq slice-end (org-element-property :end link))
+                                             (end-of-line)
+                                             (delete-char 1)
+                                             (insert (propertize "\n" 'line-height t)))
+                                         (setq slice-start (line-beginning-position))
+                                         (setq slice-end (1+ (line-beginning-position)))
+                                         (if (and org-sliced-images-consume-dummies
+                                                  (equal
+                                                   (buffer-substring-no-properties
+                                                    (line-beginning-position)
+                                                    (line-end-position))
+                                                   " "))
+                                             ;; Consume next line as dummy
+                                             (progn
+                                               (when left-margin
+                                                 (put-text-property
+                                                  slice-start
+                                                  slice-end
+                                                  'line-prefix
+                                                  `(space :width ,left-margin)))
+                                               (put-text-property
+                                                (line-end-position) (1+ (line-end-position)) 'line-height t)
+                                               (forward-line))
+                                           ;; Create dummy line
+                                           (insert (if left-margin
+                                                       (propertize " " 'line-prefix `(space :width ,left-margin))
+                                                     " "))
+                                           (insert (propertize "\n" 'line-height t)))
+                                         (when (not dummy-zone-start)
+                                           (setq dummy-zone-start slice-start))
+                                         (setq dummy-zone-end (1+ slice-end)))
+                                       (push
+                                        (org-sliced-images--make-inline-image-overlay
+                                         slice-start
+                                         slice-end
+                                         (list (list 'slice 0 y 1.0 dy) image))
+                                        ovfam))
+                                     (setq y (+ y dy))))
+                                 (setq end (+ end (* 2 (- (ceiling image-line-h) 1))))
+                                 (push (make-overlay dummy-zone-start dummy-zone-end) ovfam)
+                                 (push ovfam org-sliced-images--image-overlay-families))))))))))))))))))
 
 ;;;###autoload
-(defun org-sliced-images-remove-inline-images (&optional beg end)
-  "Remove inline display of images starting between BEG and END."
-  (interactive)
-  (mapc
-   (lambda (ovfam)
-     (setq org-sliced-images--image-overlay-families
-           (delq ovfam org-sliced-images--image-overlay-families))
-     (org-sliced-images--remove-overlay-family ovfam))
-   (org-sliced-images--get-image-overlay-families beg end)))
+(defun org-sliced-images-toggle-inline-images (&optional include-linked beg end)
+  "Toggle the display of inline images starting between BEG and END.
+INCLUDE-LINKED is passed to `org-sliced-images-display-inline-images'."
+  (interactive "P")
+  (if (org-sliced-images--get-image-overlay-families beg end)
+      (progn
+        (org-sliced-images-remove-inline-images beg end)
+        (when (called-interactively-p 'interactive)
+          (message "Inline image display turned off")))
+    (org-sliced-images-display-inline-images include-linked nil beg end)
+    (when (called-interactively-p 'interactive)
+      (let ((new (org-sliced-images--get-image-overlay-families beg end)))
+        (message
+         (if new
+             (format "%d images displayed inline" (length new))
+           "No images to display inline"))))))
 
 ;;;; Minor mode
 
